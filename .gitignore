@@ -4,7 +4,12 @@ __pycache__/
 *$py.class
 
 # C extensions
-*.so
+cmake-build-debug/
+sup_bresenham.c
+#*.so
+
+.idea/
+zdjecia/
 
 # Distribution / packaging
 .Python
