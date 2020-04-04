@@ -1,6 +1,7 @@
 import numpy as np
 import ctypes
 from skimage.io import imread, imshow, imsave
+from skimage.filters import gaussian
 from math import pi
 from matplotlib import pyplot as plt
 
@@ -47,26 +48,77 @@ class Transform:
         # imshow(res.T)
         # plt.show()
         # imsave("wyn.jpg", res.T, format="jpg")
-        return res.T
+        return res
 
-    def reverse_transform(self, decoders, rang, step, size):
-        self.__cLib.create_bitmap(size, size)
+    def reverse_transform(self, sinog, decoders, rang, step, size, fil):
+        # sresult = self.__cLib.set_result
+        # sresult.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_float]
+        # for i, rr in enumerate(sinog.T):
+        #     for j, r in enumerate(rr):
+        #         sresult(i, j, r)
+
+        self.__cLib.create_bitmap(size[0], size[1])
         get_bitmap = self.__cLib.get_bitmap
         get_bitmap.argtypes = [ctypes.c_int, ctypes.c_int]
         get_bitmap.restype = ctypes.c_float
 
         reverse = self.__cLib.reverse_bres
         reverse.argtypes = [ctypes.c_float, ctypes.c_int, ctypes.c_float, ctypes.c_int]
-        print("za")
-        reverse(step, decoders, rang, size) #TODO result w c nie ma
-        print("za")
+        # print("za")
+        if fil:
+            reverse(step, decoders, rang, 1)
+        else:
+            reverse(step, decoders, rang, 0)
+        # print("za")
 
-        res = np.zeros((size, size), dtype=float)
+        res = np.zeros(size, dtype=float)
         for i, re in enumerate(res):
             for j, r in enumerate(re):
                 res[i, j] = get_bitmap(i, j)
 
+        res = gaussian(res, sigma=1)
+
+        if fil:
+            ma = np.amin(res)
+            print(ma)
+            res = res - ma
+            ma = np.amax(res)
+            print(ma)
+            res = res / ma
+            # print(res)
+        else:
+            ma = np.amax(res)
+            print(ma)
+            res = res / ma
+
+        mi = 1.0
+        ma = 0.0
+        radius = min(size[0], size[1]) / 2 - 1
+        radius = radius * 0.9
+        x, y = size[0] / 2 - 1, size[1] / 2 - 1
+        for i, rr in enumerate(res):
+            for j, r in enumerate(rr):
+                if mi > r:
+                    mi = r
+                if ma < r:
+                    ma = r
+        print(x, y, radius)
+        print(mi, ma)
+
+        for i, rr in enumerate(res):
+            for j, r in enumerate(rr):
+                if (x - i) ** 2 + (y - j) ** 2 <= radius ** 2:
+                    # print(i, j)
+                    res[i, j] = self.__cut((r - 1.1 * mi) / (ma - 1.1 * mi))
+
         return res
+
+    def __cut(self, x):
+        if x <= 0:
+            return 0.0
+        elif x >= 1:
+            return 1.0
+        return x
 
 
 if __name__ == '__main__':

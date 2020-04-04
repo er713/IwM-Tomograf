@@ -2,10 +2,8 @@
 #include <math.h>
 #include <stdlib.h>
 #include <omp.h>
-//#include <CUnit/CUnit.h>
-//#include <CUnit/Basic.h>
-//#include "munit/munit.h"
-//#include "MyTest.h"
+#include <string.h>
+
 
 struct point {
     float x, y;
@@ -25,6 +23,7 @@ void create_bitmap(int a, int b) {
     bitmap = malloc(a * sizeof(float *));
     for (int i = 0; i < a; ++i) {
         bitmap[i] = malloc(b * sizeof(float));
+        memset(bitmap[i], 0, b * sizeof(float));
     }
 }
 
@@ -50,6 +49,10 @@ int result_a, result_b;
 
 float get_result(int a, int b) {
     return result[a][b];
+}
+
+void set_result(int a, int b, float v) {
+    result[a][b] = v;
 }
 
 void free_result() {
@@ -427,7 +430,7 @@ float line_bres(float x1, float y1, float x2, float y2) {
         int y = (int) y1, ey = (int) y2, x = (int) x1;
         for (; y <= ey; ++y) {
 //            printf("(%d, %d)\n", x, y);
-            if (x >= bitmap_a || y >= bitmap_b) printf("BLADD\n");
+//            if (x >= bitmap_a || y >= bitmap_b) printf("BLADD\n");
             sum += bitmap[x][y];
         }
         return sum;
@@ -447,19 +450,20 @@ void transform_bres(float step, int decod, float spread) {
     C.cent = (struct point) {((float) bitmap_b - 2) / 2, ((float) bitmap_a - 2) / 2};
     C.r = fminf(bitmap_b, bitmap_a) / 2 - 1;
     printf("okrag srodek: (%f, %f)\tprom: %f\n", C.cent.x, C.cent.y, C.r);
-//#pragma omp parallel
+#pragma omp parallel
     {
         struct point E, D;
         float alpha = -step, beta;
         float step_beta = spread / decod;
 
-//#pragma omp for
+#pragma omp for
         for (unsigned int i = 0; i < width; ++i) { //TODO: dodać normalizację
-//            alpha = (i - 1) * step;
-            alpha += step;
+            alpha = i * step;
+//            alpha += step;
             E = point_on_circle(C, alpha);
 
             beta = alpha - spread / 2 + M_PI;
+//            beta = step * i - spread / 2 + M_PI;
             for (int j = 0; j < decod; ++j) {
                 beta += step_beta;
                 D = point_on_circle(C, beta);
@@ -483,7 +487,7 @@ void re_bresenham(struct point P, struct point K, float add) {
     float val = A * ((float) x + 1.5f) + B * (y + 1.f) + C;
     for (; x <= ex; ++x) {
 //        printf("(%d, %.0f)\n", x, y);
-        printf("\t\t\ttest\n");
+//        printf("\t\t\ttest\n");
         bitmap[x][(int) y] += add;
         if (val >= 0) {
             val += B;
@@ -503,7 +507,7 @@ void re_bresenham1(struct point P, struct point K, float add) {
     float val = A * ((float) x + 1.5f) + B * (y + 1.f) + C;
     for (; x <= ex; ++x) {
 //        printf("(%.0f, %d)\n", y, x);
-        printf("\t\t\ttest\n");
+//        printf("\t\t\ttest\n");
         bitmap[(int) y][x] += add;
         if (val >= 0) {
             val += B;
@@ -525,7 +529,7 @@ void re_bresenham_(struct point P, struct point K, float add) {
     for (; x <= ex; ++x) {
 //        printf("(%d, %.0f)\n", x, -y);
 //        if(x>=bitmap_a||(int)(-y)>=bitmap_b) printf("BLADD\n");
-        printf("\t\t\ttest\n");
+//        printf("\t\t\ttest\n");
         bitmap[x][(int) (-y)] += add;
         if (val >= 0) {
             val += B;
@@ -546,7 +550,7 @@ void re_bresenham1_(struct point P, struct point K, float add) {
     for (; x <= ex; ++x) {
 //        printf("(%.0f, %d)\n", y, -x);
 //        if((int)y>=bitmap_a||x>=bitmap_b) printf("BLADD\n");
-        printf("\t\t\ttest\n");
+//        printf("\t\t\ttest\n");
         bitmap[(int) (y)][-x] += add;
         if (val >= 0) {
             val += B;
@@ -558,7 +562,7 @@ void re_bresenham1_(struct point P, struct point K, float add) {
 
 void re_line_bres(float x1, float y1, float x2, float y2, float add) {
     if (x1 != x2) {
-        printf("\t\t\tskos\n");
+//        printf("\t\t\tskos\n");
         if (y2 - y1 >= 0) {
             if ((y2 - y1) / (x2 - x1) <= 1)
                 re_bresenham((struct point) {x1, y1}, (struct point) {x2, y2}, add);
@@ -571,7 +575,7 @@ void re_line_bres(float x1, float y1, float x2, float y2, float add) {
                 re_bresenham1_((struct point) {-y1, x1}, (struct point) {-y2, x2}, add);
         }
     } else {
-        printf("\t\t\tpros\n");
+//        printf("\t\t\tpros\n");
         if (y1 > y2) {
             float tmp = y1;
             y1 = y2;
@@ -586,8 +590,21 @@ void re_line_bres(float x1, float y1, float x2, float y2, float add) {
     }
 }
 
-void reverse_bres(float step, int decod, float spread, int size) {
+const float rev_pi = -(float) (M_2_PI * M_2_PI);
 
+float filtered(unsigned int row, int col) {
+    float sum = 0.0f;
+    for (int i = -11; i <= 11; i += 2) {
+        if (i + row >= 0 && i + row < result_a)
+            sum += (rev_pi / (float) (i * i)) * result[row + i][col];
+    }
+    sum += result[row][col];
+//    printf("%f\n", sum);
+    return sum;
+}
+
+void reverse_bres(float step, int decod, float spread, int fil) {
+    printf("%f\n", rev_pi);
     /*
     result = malloc(width * sizeof(float *));
     for (unsigned int i = 0; i < width; ++i)
@@ -596,9 +613,21 @@ void reverse_bres(float step, int decod, float spread, int size) {
     result_b = decod;*/
     unsigned long width = (unsigned long) floorf(2 * M_PI / step);
 
+    float div = 0.0;
+    for (int i = 0; i < result_a; ++i) {
+        for (int j = 0; j < result_b; ++j) {
+            if (div < result[i][j]) div = result[i][j];
+        }
+    }
+    for (int i = 0; i < result_a; ++i) {
+        for (int j = 0; j < result_b; ++j) {
+            result[i][j] /= div;
+        }
+    }
+
     struct circle C;
-    C.cent = (struct point) {((float) size - 2) / 2, ((float) size - 2) / 2};
-    C.r = (float) size / 2 - 1;
+    C.cent = (struct point) {((float) bitmap_a - 2) / 2, ((float) bitmap_b - 2) / 2};
+    C.r = fminf((float) bitmap_a, (float) bitmap_b) / 2 - 1;
     printf("okrag srodek: (%f, %f)\tprom: %f\n", C.cent.x, C.cent.y, C.r);
 
     struct point E, D;
@@ -610,16 +639,24 @@ void reverse_bres(float step, int decod, float spread, int size) {
         E = point_on_circle(C, alpha);
 
         beta = alpha - spread / 2 + M_PI;
-        printf("\talfa %f\n", alpha);
+//        printf("\talfa %f\n", alpha);
         for (int j = 0; j < decod; ++j) {
             beta += step_beta;
             D = point_on_circle(C, beta);
-            printf("%f\n", result[i][j]); //TODO odczyt result (usuwanie go w streamlit)
-            printf("\t\tbeta %f\n", beta);
-            if (E.x <= D.x) re_line_bres(E.x, E.y, D.x, D.y, result[i][j]);
-            else re_line_bres(D.x, D.y, E.x, E.y, result[i][j]);
+//            printf("%f\n", result[i][j]);
+//            printf("\t\tbeta %f\n", beta);
+            if (result[i][j] > 0.0) {
+//                printf("%f\n", result[i][j]);
+                if (fil) {
+                    if (E.x <= D.x) re_line_bres(E.x, E.y, D.x, D.y, filtered(i, j));
+                    else re_line_bres(D.x, D.y, E.x, E.y, filtered(i, j));
+                } else {
+                    if (E.x <= D.x) re_line_bres(E.x, E.y, D.x, D.y, result[i][j]);
+                    else re_line_bres(D.x, D.y, E.x, E.y, result[i][j]);
+                }
+            }
 //            if (i > 90 && i < 110)
-                printf("E: (%.2f, %.2f)\tD: (%.2f, %.2f)\t%f\n", E.x, E.y, D.x, D.y, result[i][j]);
+//                printf("E: (%.2f, %.2f)\tD: (%.2f, %.2f)\t%f\n", E.x, E.y, D.x, D.y, result[i][j]);
         }
     }
 

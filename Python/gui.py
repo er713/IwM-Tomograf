@@ -10,12 +10,13 @@ from main import Transform
 st.write("""
 # Tomograf
 """)
-tomograf = Transform()
 
 image_bytes = st.file_uploader("Choose a image", type="jpg")
 
 if image_bytes is not None:
-    tomograf.free_all()
+    tomograf = Transform()
+    m = 1.0
+    # tomograf.free_all()
     with open("tem.jpg", 'wb') as f:
         f.write(image_bytes.read())
     image = imread("tem.jpg", True)
@@ -26,16 +27,16 @@ if image_bytes is not None:
     rang = st.slider("Rozpiętość (w stopniach)", 100, 330, 250, 1)
     step = st.slider("Krok (w stopniach)", 0.1, 5.0, 0.5, 0.1)
 
-    if st.button("Włącz tomograf"):
+    if st.checkbox("Włącz tomograf"):
         sinogram = tomograf.call_transform(image, decoders, rang * math.pi / 180, step * math.pi / 180)
         tomograf.free_bitmap()
-        sinogram = sinogram
         st.image(sinogram)
-
-    if st.button("Odwróc"):
-        print("przed")
-        odw = tomograf.reverse_transform(decoders, rang * math.pi / 180, step * math.pi / 180,
-                                         int(math.floor(math.sqrt(decoders * 360 / step))))
-        print("po")
-        st.image(odw)
-        tomograf.free_all()
+        fil = st.checkbox("Filtruj sinogram")
+        if st.checkbox("Odwrotna transformacja"):
+            # print("przed")
+            odw = tomograf.reverse_transform(sinogram, decoders, rang * math.pi / 180, step * math.pi / 180,
+                                             image.shape, fil)
+            # print("po")
+            # tomograf.free_bitmap()
+            st.image(odw)
+            # tomograf.free_all()
