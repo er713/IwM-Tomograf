@@ -1,12 +1,18 @@
 import numpy as np
 import ctypes
-from skimage.io import imread, imshow, imsave
 from skimage.filters import gaussian
 from math import pi
-from matplotlib import pyplot as plt
+from streamlit import cache
 
 
 class Transform:
+
+    decoders = 0
+    rang = 0
+    step = 0.0
+    fil = False
+    iter = (0, 180)
+
     def __init__(self):
         self.__cLib = ctypes.CDLL("./transf.so")
 
@@ -17,6 +23,7 @@ class Transform:
     def free_bitmap(self):
         self.__cLib.free_bitmap()
 
+    @cache
     def call_transform(self, bitmap, decoders, rang, step):
         # bitmap = imread("zdjecia/Kropka.jpg", True)
         # imshow(bitmap)
@@ -50,7 +57,7 @@ class Transform:
         # imsave("wyn.jpg", res.T, format="jpg")
         return res
 
-    def reverse_transform(self, sinog, decoders, rang, step, size, fil):
+    def reverse_transform(self, decoders, rang, step, size, fil):
         # sresult = self.__cLib.set_result
         # sresult.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_float]
         # for i, rr in enumerate(sinog.T):
@@ -91,25 +98,25 @@ class Transform:
             print(ma)
             res = res / ma
 
-        mi = 1.0
-        ma = 0.0
-        radius = min(size[0], size[1]) / 2 - 1
-        radius = radius * 0.9
-        x, y = size[0] / 2 - 1, size[1] / 2 - 1
-        for i, rr in enumerate(res):
-            for j, r in enumerate(rr):
-                if mi > r:
-                    mi = r
-                if ma < r:
-                    ma = r
-        print(x, y, radius)
-        print(mi, ma)
-
-        for i, rr in enumerate(res):
-            for j, r in enumerate(rr):
-                if (x - i) ** 2 + (y - j) ** 2 <= radius ** 2:
-                    # print(i, j)
-                    res[i, j] = self.__cut((r - 1.1 * mi) / (ma - 1.1 * mi))
+        # mi = 1.0
+        # ma = 0.0
+        # radius = min(size[0], size[1]) / 2 - 1
+        # radius = radius * 0.9
+        # x, y = size[0] / 2 - 1, size[1] / 2 - 1
+        # for i, rr in enumerate(res):
+        #     for j, r in enumerate(rr):
+        #         if mi > r:
+        #             mi = r
+        #         if ma < r:
+        #             ma = r
+        # print(x, y, radius)
+        # print(mi, ma)
+        #
+        # for i, rr in enumerate(res):
+        #     for j, r in enumerate(rr):
+        #         if (x - i) ** 2 + (y - j) ** 2 <= radius ** 2:
+        #             # print(i, j)
+        #             res[i, j] = self.__cut((r - 1.1 * mi) / (ma - 1.1 * mi))
 
         return res
 
@@ -119,6 +126,55 @@ class Transform:
         elif x >= 1:
             return 1.0
         return x
+
+    def norm(self, image, alpha, beta):
+        i = np.amin(image)
+        a = np.amax(image)
+        i += alpha
+        a -= beta
+        for ri, rr in enumerate(image):
+            for rj, r in enumerate(rr):
+                image[ri, rj] = self.__cut((r - i) / (a - i))
+
+        return image
+
+    def reverse_transform_it(self, decoders, rang, step, size, fil, beg_s, end_s):
+
+        self.__cLib.create_bitmap(size[0], size[1])
+        get_bitmap = self.__cLib.get_bitmap
+        get_bitmap.argtypes = [ctypes.c_int, ctypes.c_int]
+        get_bitmap.restype = ctypes.c_float
+
+        reverse = self.__cLib.reverse_bres_it
+        reverse.argtypes = [ctypes.c_float, ctypes.c_int, ctypes.c_float, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        # print("za")
+        if fil:
+            reverse(step, decoders, rang, 1, beg_s, end_s)
+        else:
+            reverse(step, decoders, rang, 0, beg_s, end_s)
+        # print("za")
+
+        res = np.zeros(size, dtype=float)
+        for i, re in enumerate(res):
+            for j, r in enumerate(re):
+                res[i, j] = get_bitmap(i, j)
+
+        res = gaussian(res, sigma=1)
+
+        if fil:
+            ma = np.amin(res)
+            print(ma)
+            res = res - ma
+            ma = np.amax(res)
+            print(ma)
+            res = res / ma
+            # print(res)
+        else:
+            ma = np.amax(res)
+            print(ma)
+            res = res / ma
+
+        return res
 
 
 if __name__ == '__main__':

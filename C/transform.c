@@ -76,7 +76,7 @@ float tile(float x) {
     return x;
 }
 
-float bresenham_super(struct point A, struct point B) {
+/*float bresenham_super(struct point A, struct point B) {
     float sum = 0;
 
 //    printf("Wybrano:\n");
@@ -84,7 +84,7 @@ float bresenham_super(struct point A, struct point B) {
 
         int di = (int) ((B.y - A.y) / fabsf(B.y - A.y));
 //        printf("di:%d\n", di);
-        for (int i = (int) A.y; di * i < di * B.y; i += di) { //TODO: rozbić na ifa i dwie pętle
+        for (int i = (int) A.y; di * i < di * B.y; i += di) {
 //            printf("x: %d\ty: %d\n", (int) A.x, i);
             sum += bitmap[(int) A.x][i];
         }
@@ -117,7 +117,7 @@ float bresenham_super(struct point A, struct point B) {
             d_next_horizontal = roof(act.y) / a;
             d_next_vertical = roof(act.x);
 
-            while ((act.x <= floorf(B.x) && act.y <= floorf(B.y))) { //TODO: ?początkowe? i końcowe procenty
+            while ((act.x <= floorf(B.x) && act.y <= floorf(B.y))) {
 //                printf("act: (%.2f, %.2f)\n", act.x, act.y);
 //                printf("piksel (%d, %d)", (int) (act.x), (int) (mul * tile(act.y)));
 
@@ -174,7 +174,7 @@ float bresenham_super(struct point A, struct point B) {
 
     }
     return sum;
-}
+}*/
 
 struct point point_on_circle(struct circle C, float a) {
     struct point r = C.cent;
@@ -183,7 +183,7 @@ struct point point_on_circle(struct circle C, float a) {
     return r;
 }
 
-void transform(float step, int decod, float spread) {
+/*void transform(float step, int decod, float spread) {
 
     unsigned long width = (unsigned long) floorf(2 * M_PI / step);
     result = malloc(width * sizeof(float *));
@@ -201,7 +201,7 @@ void transform(float step, int decod, float spread) {
     float alpha = -step, beta;
     float step_beta = spread / decod;
 
-    for (unsigned int i = 0; i < width; ++i) { //TODO: dodać normalizację
+    for (unsigned int i = 0; i < width; ++i) {
         alpha += step;
         E = point_on_circle(C, alpha);
 
@@ -219,7 +219,7 @@ void transform(float step, int decod, float spread) {
 
 float line(float x, float y, float A, float B, float C) {
     return A * x + B * y + C;
-}
+}*/
 
 /*void bresenham(struct point P, struct point K) {
 //    char *str = malloc(1000);
@@ -330,7 +330,8 @@ float bresenham(struct point P, struct point K) {
     float val = A * ((float) x + 1.5f) + B * (y + 1.f) + C;
     for (; x <= ex; ++x) {
 //        printf("(%d, %.0f)\n", x, y);
-        sum += bitmap[x][(int) y];
+        if ((int) y >= 0 && (int) y < bitmap_b && x >= 0 && x < bitmap_a)
+            sum += bitmap[x][(int) y];
         if (val >= 0) {
             val += B;
             ++y;
@@ -351,8 +352,8 @@ float bresenham1(struct point P, struct point K) {
     float val = A * ((float) x + 1.5f) + B * (y + 1.f) + C;
     for (; x <= ex; ++x) {
 //        printf("(%.0f, %d)\n", y, x);
-
-        sum += bitmap[(int) y][x];
+        if ((int) y >= 0 && (int) y < bitmap_a && x >= 0 && x < bitmap_b)
+            sum += bitmap[(int) y][x];
         if (val >= 0) {
             val += B;
             ++y;
@@ -375,7 +376,8 @@ float bresenham_(struct point P, struct point K) {
     for (; x <= ex; ++x) {
 //        printf("(%d, %.0f)\n", x, -y);
 //        if(x>=bitmap_a||(int)(-y)>=bitmap_b) printf("BLADD\n");
-        sum += bitmap[x][(int) (-y)];
+        if ((int) (-y) >= 0 && (int) (-y) < bitmap_b && x >= 0 && x < bitmap_a)
+            sum += bitmap[x][(int) (-y)];
         if (val >= 0) {
             val += B;
             ++y;
@@ -397,7 +399,8 @@ float bresenham1_(struct point P, struct point K) {
     for (; x <= ex; ++x) {
 //        printf("(%.0f, %d)\n", y, -x);
 //        if((int)y>=bitmap_a||x>=bitmap_b) printf("BLADD\n");
-        sum += bitmap[(int) (y)][-x];
+        if ((int) y >= 0 && (int) y < bitmap_a && -x >= 0 && -x < bitmap_b)
+            sum += bitmap[(int) (y)][-x];
         if (val >= 0) {
             val += B;
             ++y;
@@ -431,7 +434,8 @@ float line_bres(float x1, float y1, float x2, float y2) {
         for (; y <= ey; ++y) {
 //            printf("(%d, %d)\n", x, y);
 //            if (x >= bitmap_a || y >= bitmap_b) printf("BLADD\n");
-            sum += bitmap[x][y];
+            if (x >= 0 && x < bitmap_a && y >= 0 && y < bitmap_b)
+                sum += bitmap[x][y];
         }
         return sum;
     }
@@ -447,17 +451,17 @@ void transform_bres(float step, int decod, float spread) {
     result_b = decod;
 
     struct circle C;
-    C.cent = (struct point) {((float) bitmap_b - 2) / 2, ((float) bitmap_a - 2) / 2};
-    C.r = fminf(bitmap_b, bitmap_a) / 2 - 1;
+    C.cent = (struct point) {((float) bitmap_b) / 2, ((float) bitmap_a) / 2};
+    C.r = sqrtf(((float) bitmap_a) * ((float) bitmap_a) + ((float) bitmap_b) * ((float) bitmap_b)) / 2;
     printf("okrag srodek: (%f, %f)\tprom: %f\n", C.cent.x, C.cent.y, C.r);
 #pragma omp parallel
     {
         struct point E, D;
-        float alpha = -step, beta;
+        float alpha, beta;
         float step_beta = spread / decod;
 
 #pragma omp for
-        for (unsigned int i = 0; i < width; ++i) { //TODO: dodać normalizację
+        for (unsigned int i = 0; i < width; ++i) {
             alpha = i * step;
 //            alpha += step;
             E = point_on_circle(C, alpha);
@@ -488,7 +492,8 @@ void re_bresenham(struct point P, struct point K, float add) {
     for (; x <= ex; ++x) {
 //        printf("(%d, %.0f)\n", x, y);
 //        printf("\t\t\ttest\n");
-        bitmap[x][(int) y] += add;
+        if (x >= 0 && x < bitmap_a && (int) y >= 0 && (int) y < bitmap_b)
+            bitmap[x][(int) y] += add;
         if (val >= 0) {
             val += B;
             ++y;
@@ -508,7 +513,8 @@ void re_bresenham1(struct point P, struct point K, float add) {
     for (; x <= ex; ++x) {
 //        printf("(%.0f, %d)\n", y, x);
 //        printf("\t\t\ttest\n");
-        bitmap[(int) y][x] += add;
+        if (x >= 0 && x < bitmap_b && (int) y >= 0 && (int) y < bitmap_a)
+            bitmap[(int) y][x] += add;
         if (val >= 0) {
             val += B;
             ++y;
@@ -530,7 +536,8 @@ void re_bresenham_(struct point P, struct point K, float add) {
 //        printf("(%d, %.0f)\n", x, -y);
 //        if(x>=bitmap_a||(int)(-y)>=bitmap_b) printf("BLADD\n");
 //        printf("\t\t\ttest\n");
-        bitmap[x][(int) (-y)] += add;
+        if (x >= 0 && x < bitmap_a && (int) (-y) >= 0 && (int) (-y) < bitmap_b)
+            bitmap[x][(int) (-y)] += add;
         if (val >= 0) {
             val += B;
             ++y;
@@ -551,7 +558,8 @@ void re_bresenham1_(struct point P, struct point K, float add) {
 //        printf("(%.0f, %d)\n", y, -x);
 //        if((int)y>=bitmap_a||x>=bitmap_b) printf("BLADD\n");
 //        printf("\t\t\ttest\n");
-        bitmap[(int) (y)][-x] += add;
+        if (-x >= 0 && -x < bitmap_b && (int) y >= 0 && (int) y < bitmap_a)
+            bitmap[(int) (y)][-x] += add;
         if (val >= 0) {
             val += B;
             ++y;
@@ -584,8 +592,9 @@ void re_line_bres(float x1, float y1, float x2, float y2, float add) {
         int y = (int) y1, ey = (int) y2, x = (int) x1;
         for (; y <= ey; ++y) {
 //            printf("(%d, %d)\n", x, y);
-            if (x >= bitmap_a || y >= bitmap_b) printf("BLADD\n");
-            bitmap[x][y] += add;
+//            if (x >= bitmap_a || y >= bitmap_b) printf("BLADD\n");
+            if (x >= 0 && x < bitmap_a && y >= 0 && y < bitmap_b)
+                bitmap[x][y] += add;
         }
     }
 }
@@ -595,8 +604,8 @@ const float rev_pi = -(float) (M_2_PI * M_2_PI);
 float filtered(unsigned int row, int col) {
     float sum = 0.0f;
     for (int i = -11; i <= 11; i += 2) {
-        if (i + row >= 0 && i + row < result_a)
-            sum += (rev_pi / (float) (i * i)) * result[row + i][col];
+        if (i + col >= 0 && i + col < result_b)
+            sum += (rev_pi / (float) (i * i)) * result[row][col + i];
     }
     sum += result[row][col];
 //    printf("%f\n", sum);
@@ -626,15 +635,15 @@ void reverse_bres(float step, int decod, float spread, int fil) {
     }
 
     struct circle C;
-    C.cent = (struct point) {((float) bitmap_a - 2) / 2, ((float) bitmap_b - 2) / 2};
-    C.r = fminf((float) bitmap_a, (float) bitmap_b) / 2 - 1;
+    C.cent = (struct point) {((float) bitmap_a) / 2, ((float) bitmap_b) / 2};
+    C.r = sqrtf(((float) bitmap_a) * ((float) bitmap_a) + ((float) bitmap_b) * ((float) bitmap_b)) / 2;
     printf("okrag srodek: (%f, %f)\tprom: %f\n", C.cent.x, C.cent.y, C.r);
 
     struct point E, D;
     float alpha = -step, beta;
     float step_beta = spread / decod;
 
-    for (unsigned int i = 0; i < width; ++i) { //TODO: dodać normalizację
+    for (unsigned int i = 0; i < width; ++i) {
         alpha += step;
         E = point_on_circle(C, alpha);
 
@@ -662,26 +671,65 @@ void reverse_bres(float step, int decod, float spread, int fil) {
 
 }
 
-/*void test_bresenham() {
-    CU_ASSERT(1 + 1 == 2);
-    CU_ASSERT(1 + 1 == 21);
-//    CU_ASSERT(1);
-}*/
+void reverse_bres_it(float step, int decod, float spread, int fil, int beg, int end) {
+    printf("%f\n", rev_pi);
+    /*
+    result = malloc(width * sizeof(float *));
+    for (unsigned int i = 0; i < width; ++i)
+        result[i] = malloc(decod * sizeof(float));
+    result_a = (int) width;
+    result_b = decod;*/
+    unsigned long width = (unsigned long) floorf(2 * M_PI / step);
 
-/*static MunitResult test_bresenham(const MunitParameter params[], void *user_data) {
+    float div = 0.0;
+    for (int i = 0; i < result_a; ++i) {
+        for (int j = 0; j < result_b; ++j) {
+            if (div < result[i][j]) div = result[i][j];
+        }
+    }
+    for (int i = 0; i < result_a; ++i) {
+        for (int j = 0; j < result_b; ++j) {
+            result[i][j] /= div;
+        }
+    }
+
+    struct circle C;
+    C.cent = (struct point) {((float) bitmap_a) / 2, ((float) bitmap_b) / 2};
+    C.r = sqrtf(((float) bitmap_a) * ((float) bitmap_a) + ((float) bitmap_b) * ((float) bitmap_b)) / 2;
+    printf("okrag srodek: (%f, %f)\tprom: %f\n", C.cent.x, C.cent.y, C.r);
+
+    struct point E, D;
+    float alpha = -step, beta;
+    float step_beta = spread / decod;
+    int end_w = end / 360.0 * width;
+
+    for (unsigned int i = (unsigned int) (beg / 360.0 * width); i < end_w; ++i) {
+        alpha = i*step;
+        E = point_on_circle(C, alpha);
+
+        beta = alpha - spread / 2 + M_PI;
+//        printf("\talfa %f\n", alpha);
+        for (int j = 0; j < decod; ++j) {
+            beta += step_beta;
+            D = point_on_circle(C, beta);
+//            printf("%f\n", result[i][j]);
+//            printf("\t\tbeta %f\n", beta);
+            if (result[i][j] > 0.0) {
+//                printf("%f\n", result[i][j]);
+                if (fil) {
+                    if (E.x <= D.x) re_line_bres(E.x, E.y, D.x, D.y, filtered(i, j));
+                    else re_line_bres(D.x, D.y, E.x, E.y, filtered(i, j));
+                } else {
+                    if (E.x <= D.x) re_line_bres(E.x, E.y, D.x, D.y, result[i][j]);
+                    else re_line_bres(D.x, D.y, E.x, E.y, result[i][j]);
+                }
+            }
+//            if (i > 90 && i < 110)
+//                printf("E: (%.2f, %.2f)\tD: (%.2f, %.2f)\t%f\n", E.x, E.y, D.x, D.y, result[i][j]);
+        }
+    }
 
 }
-
-static float x1_params[] = {};
-static float y1_params[] = {};
-static float x2_params[] = {};
-static float y2_params[] = {};
-
-static MunitTest test_suite_tests[] = {
-        {(char *) "test/bresenham", test_bresenham, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-        {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}
-};*/
-
 
 int main() {
 //    printf("Hello, World!\n%f", suf(1.4f));
