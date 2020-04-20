@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import ctypes
 from skimage.filters import gaussian
@@ -6,7 +8,6 @@ from streamlit import cache
 
 
 class Transform:
-
     decoders = 0
     rang = 0
     step = 0.0
@@ -90,6 +91,12 @@ class Transform:
             print(ma)
             res = res - ma
             ma = np.amax(res)
+            if ma == np.inf:
+                ma = np.ma.masked_invalid(res).max()
+                for i, l in enumerate(res):
+                    for j, v in enumerate(l):
+                        if v == np.inf:
+                            res[i, j] = ma
             print(ma)
             res = res / ma
             # print(res)
@@ -126,6 +133,13 @@ class Transform:
         elif x >= 1:
             return 1.0
         return x
+
+    def cut_all(self, image):
+        m = np.amax(image)
+        for i, l in enumerate(image):
+            for j, v in enumerate(l):
+                image[i, j] = v / m
+        return image
 
     def norm(self, image, alpha, beta):
         i = np.amin(image)
@@ -175,6 +189,13 @@ class Transform:
             res = res / ma
 
         return res
+
+    def do_all(self, image, decoders, rang, steps, filter: bool):
+        self.call_transform(image, decoders, rang * math.pi / 180, 2 * math.pi / steps)
+        self.free_bitmap()
+        rev = self.reverse_transform(decoders, rang * math.pi / 180, 2 * math.pi / steps, image.shape, filter)
+        rev = self.norm(rev, 0.38, 0.0)
+        return rev, math.sqrt(((self.cut_all(image) - rev) ** 2).mean())
 
 
 if __name__ == '__main__':
