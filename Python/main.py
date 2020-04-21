@@ -3,8 +3,10 @@ import math
 import numpy as np
 import ctypes
 from skimage.filters import gaussian
+from skimage.transform import resize
 from math import pi
 from streamlit import cache
+import streamlit as st
 
 
 class Transform:
@@ -70,40 +72,72 @@ class Transform:
         get_bitmap.argtypes = [ctypes.c_int, ctypes.c_int]
         get_bitmap.restype = ctypes.c_float
 
-        reverse = self.__cLib.reverse_bres
-        reverse.argtypes = [ctypes.c_float, ctypes.c_int, ctypes.c_float, ctypes.c_int]
+        reverse = self.__cLib.reverse_bres_it
+        reverse.argtypes = [ctypes.c_float, ctypes.c_int, ctypes.c_float, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                            ctypes.c_int]
         # print("za")
         if fil:
-            reverse(step, decoders, rang, 1)
+            fbool = 1
+            # reverse(step, decoders, rang, 1)
         else:
-            reverse(step, decoders, rang, 0)
+            fbool = 0
+            # reverse(step, decoders, rang, 0)
         # print("za")
+        stages = []
+        slot = st.empty()
+        for angle in range(0, 360, 10):
+            reverse(step, decoders, rang, fbool, angle, angle+10, 0)
+            new = np.zeros(size, dtype=float)
+            for i, re in enumerate(new):
+                for j, r in enumerate(re):
+                    new[i, j] = get_bitmap(i, j)
+            if fil:
+                ma = np.amin(new)
+                print(ma)
+                new = new - ma
+                ma = np.amax(new)
+                if ma == np.inf:
+                    ma = np.ma.masked_invalid(new).max()
+                    for i, l in enumerate(new):
+                        for j, v in enumerate(l):
+                            if v == np.inf:
+                                new[i, j] = ma
+                print(ma)
+                new = new / ma
+                # print(res)
+            else:
+                ma = np.amax(new)
+                print(ma)
+                new = new / ma
+            stages.append(resize(new, (size[0]//10, size[1]//10)))
+            slot.image(stages)
 
-        res = np.zeros(size, dtype=float)
-        for i, re in enumerate(res):
-            for j, r in enumerate(re):
-                res[i, j] = get_bitmap(i, j)
+        # st.image(stages)
+        res = new
+        # for i, re in enumerate(res):
+        #     for j, r in enumerate(re):
+        #         res[i, j] = get_bitmap(i, j)
 
         res = gaussian(res, sigma=1)
 
-        if fil:
-            ma = np.amin(res)
-            print(ma)
-            res = res - ma
-            ma = np.amax(res)
-            if ma == np.inf:
-                ma = np.ma.masked_invalid(res).max()
-                for i, l in enumerate(res):
-                    for j, v in enumerate(l):
-                        if v == np.inf:
-                            res[i, j] = ma
-            print(ma)
-            res = res / ma
-            # print(res)
-        else:
-            ma = np.amax(res)
-            print(ma)
-            res = res / ma
+        # if fil:
+        #     ma = np.amin(res)
+        #     print(ma)
+        #     res = res - ma
+        #     ma = np.amax(res)
+        #     if ma == np.inf:
+        #         ma = np.ma.masked_invalid(res).max()
+        #         for i, l in enumerate(res):
+        #             for j, v in enumerate(l):
+        #                 if v == np.inf:
+        #                     res[i, j] = ma
+        #     print(ma)
+        #     res = res / ma
+        #     # print(res)
+        # else:
+        #     ma = np.amax(res)
+        #     print(ma)
+        #     res = res / ma
 
         # mi = 1.0
         # ma = 0.0
@@ -160,12 +194,13 @@ class Transform:
         get_bitmap.restype = ctypes.c_float
 
         reverse = self.__cLib.reverse_bres_it
-        reverse.argtypes = [ctypes.c_float, ctypes.c_int, ctypes.c_float, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        reverse.argtypes = [ctypes.c_float, ctypes.c_int, ctypes.c_float, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                            ctypes.c_int]
         # print("za")
         if fil:
-            reverse(step, decoders, rang, 1, beg_s, end_s)
+            reverse(step, decoders, rang, 1, beg_s, end_s, True)
         else:
-            reverse(step, decoders, rang, 0, beg_s, end_s)
+            reverse(step, decoders, rang, 0, beg_s, end_s, True)
         # print("za")
 
         res = np.zeros(size, dtype=float)

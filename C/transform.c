@@ -671,7 +671,7 @@ void reverse_bres(float step, int decod, float spread, int fil) {
 
 }
 
-void reverse_bres_it(float step, int decod, float spread, int fil, int beg, int end) {
+void reverse_bres_it(float step, int decod, float spread, int fil, int beg, int end, int norm) {
     printf("%f\n", rev_pi);
     /*
     result = malloc(width * sizeof(float *));
@@ -681,15 +681,17 @@ void reverse_bres_it(float step, int decod, float spread, int fil, int beg, int 
     result_b = decod;*/
     unsigned long width = (unsigned long) floorf(2 * M_PI / step);
 
-    float div = 0.0;
-    for (int i = 0; i < result_a; ++i) {
-        for (int j = 0; j < result_b; ++j) {
-            if (div < result[i][j]) div = result[i][j];
+    if (norm) {
+        float div = 0.0;
+        for (int i = 0; i < result_a; ++i) {
+            for (int j = 0; j < result_b; ++j) {
+                if (div < result[i][j]) div = result[i][j];
+            }
         }
-    }
-    for (int i = 0; i < result_a; ++i) {
-        for (int j = 0; j < result_b; ++j) {
-            result[i][j] /= div;
+        for (int i = 0; i < result_a; ++i) {
+            for (int j = 0; j < result_b; ++j) {
+                result[i][j] /= div;
+            }
         }
     }
 
@@ -704,7 +706,7 @@ void reverse_bres_it(float step, int decod, float spread, int fil, int beg, int 
     int end_w = end / 360.0 * width;
 
     for (unsigned int i = (unsigned int) (beg / 360.0 * width); i < end_w; ++i) {
-        alpha = i*step;
+        alpha = i * step;
         E = point_on_circle(C, alpha);
 
         beta = alpha - spread / 2 + M_PI;
